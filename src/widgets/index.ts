@@ -12,6 +12,8 @@ export { ContextPercentageWidget } from './ContextPercentage';
 export { ContextPercentageUsableWidget } from './ContextPercentageUsable';
 export { SessionClockWidget } from './SessionClock';
 export { SessionCostWidget } from './SessionCost';
+export { CalculatedCostWidget } from './CalculatedCost';
+export { DailyCostWidget } from './DailyCost';
 export { TerminalWidthWidget } from './TerminalWidth';
 export { VersionWidget } from './Version';
 export { CustomTextWidget } from './CustomText';
