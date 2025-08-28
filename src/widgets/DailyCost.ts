@@ -10,12 +10,20 @@ import type {
     WidgetItem
 } from '../types/Widget';
 
-// Claude Opus 4 pricing (as of Jan 2025)
-const PRICING = {
-    input: 15.00 / 1_000_000,        // $15 per million input tokens
-    output: 75.00 / 1_000_000,       // $75 per million output tokens
-    cacheRead: 1.50 / 1_000_000,     // $1.50 per million cache read tokens
-    cacheCreate: 18.75 / 1_000_000   // $18.75 per million cache creation tokens (25% more than input)
+// Model pricing (as of Jan 2025)
+const PRICING: Record<string, { input: number; output: number; cacheRead: number; cacheCreate: number }> = {
+    opus: {
+        input: 15.00 / 1_000_000,        // $15 per million input tokens
+        output: 75.00 / 1_000_000,       // $75 per million output tokens
+        cacheRead: 1.50 / 1_000_000,     // $1.50 per million cache read tokens
+        cacheCreate: 18.75 / 1_000_000   // $18.75 per million cache creation tokens
+    },
+    sonnet: {
+        input: 3.00 / 1_000_000,         // $3 per million input tokens
+        output: 15.00 / 1_000_000,       // $15 per million output tokens
+        cacheRead: 0.30 / 1_000_000,     // $0.30 per million cache read tokens
+        cacheCreate: 3.75 / 1_000_000    // $3.75 per million cache creation tokens
+    }
 };
 
 interface TranscriptLine {
@@ -38,7 +46,7 @@ export class DailyCostWidget implements Widget {
         return { displayText: this.getDisplayName() };
     }
 
-    private getDailyTokens(): { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheCreateTokens: number } {
+    private getDailyCost(): number {
         try {
             // Find .claude folder
             const claudePath = path.join(process.env.HOME || '', '.claude');
@@ -55,10 +63,7 @@ export class DailyCostWidget implements Widget {
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const todayStartTime = todayStart.getTime();
 
-            let inputTokens = 0;
-            let outputTokens = 0;
-            let cacheReadTokens = 0;
-            let cacheCreateTokens = 0;
+            let totalCost = 0;
 
             // Process each file
             for (const file of files) {
@@ -78,12 +83,27 @@ export class DailyCostWidget implements Widget {
                                 }
                             }
 
-                            // Sum up token usage
-                            if (data.message?.usage) {
-                                inputTokens += data.message.usage.input_tokens || 0;
-                                outputTokens += data.message.usage.output_tokens || 0;
-                                cacheReadTokens += data.message.usage.cache_read_input_tokens ?? 0;
-                                cacheCreateTokens += data.message.usage.cache_creation_input_tokens ?? 0;
+                            // Calculate cost based on model and usage
+                            if (data.message?.usage && data.message?.model) {
+                                const usage = data.message.usage;
+                                const model = data.message.model;
+                                
+                                // Determine pricing based on model
+                                let pricing = PRICING.sonnet; // Default to Sonnet
+                                if (model.includes('opus')) {
+                                    pricing = PRICING.opus;
+                                } else if (model.includes('sonnet')) {
+                                    pricing = PRICING.sonnet;
+                                }
+                                
+                                // Calculate cost for this entry
+                                const entryCost = 
+                                    (usage.input_tokens || 0) * pricing.input +
+                                    (usage.output_tokens || 0) * pricing.output +
+                                    (usage.cache_read_input_tokens ?? 0) * pricing.cacheRead +
+                                    (usage.cache_creation_input_tokens ?? 0) * pricing.cacheCreate;
+                                
+                                totalCost += entryCost;
                             }
                         } catch {
                             // Skip invalid JSON lines
@@ -94,7 +114,7 @@ export class DailyCostWidget implements Widget {
                 }
             }
 
-            return { inputTokens, outputTokens, cacheReadTokens, cacheCreateTokens };
+            return totalCost;
         } catch {
             return { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
         }
@@ -105,15 +125,8 @@ export class DailyCostWidget implements Widget {
             return item.rawValue ? '15' : 'Daily: $15';
         }
 
-        // Calculate daily cost from all transcript files
-        const { inputTokens, outputTokens, cacheReadTokens, cacheCreateTokens } = this.getDailyTokens();
-        
-        // Calculate total cost
-        const inputCost = inputTokens * PRICING.input;
-        const outputCost = outputTokens * PRICING.output;
-        const cacheReadCost = cacheReadTokens * PRICING.cacheRead;
-        const cacheCreateCost = cacheCreateTokens * PRICING.cacheCreate;
-        const totalCost = inputCost + outputCost + cacheReadCost + cacheCreateCost;
+        // Get daily cost from all transcript files
+        const totalCost = this.getDailyCost();
 
         // Format cost based on magnitude
         let formattedCost: string;
