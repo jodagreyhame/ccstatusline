@@ -1,0 +1,30 @@
+# Node modules
+node_modules/
+ccstatusline/node_modules/
+
+# Build outputs
+dist/
+*.mjs
+
+# Logs
+*.log
+npm-debug.log*
+/tmp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.swp
+
+# Configuration backups
+*.backup*
+
+# Local test files
+test-*.sh

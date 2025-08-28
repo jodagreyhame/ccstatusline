@@ -1,0 +1,11 @@
+{
+  "name": "claude-statusline-optimized",
+  "version": "1.0.0",
+  "description": "Memory-safe statusline for Claude Code",
+  "author": "Your Name",
+  "license": "MIT",
+  "scripts": {
+    "install": "./install.sh",
+    "test": "echo '{\"model\":{\"display_name\":\"Test\"}}' | scripts/statusline.sh"
+  }
+}
